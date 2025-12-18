@@ -230,7 +230,7 @@ namespace YandexDirectWorker
             var updateBody = new { method = "update", @params = new { Campaigns = new[] { new { Id = campId, ExcludedSites = new { Items = finalBlacklist } } } } };
             await SendJsonRpc(client, "campaigns", updateBody, token);
         }
-
+        //1
         // Хелпер для отправки JSON-RPC запросов
         private async Task<JObject> SendJsonRpc(HttpClient client, string serviceName, object body, string token)
         {
