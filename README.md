@@ -105,7 +105,7 @@
 
 ## Переменные окружения
 
-GOOGLE_API_KEY - AIzaSyCynjaV90K4XM7EIhWqNCcsUYmrBECUkZ8
+GOOGLE_API_KEY - 
 
 либо если с ключем проблема:
 <br/><br/>
