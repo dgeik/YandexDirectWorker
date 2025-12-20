@@ -46,13 +46,16 @@ namespace YandexDirectWorker
             {
                 // 2. Получаем отчет
                 var sitesReport = await GetSitesFromReport(httpClient, yandexToken);
+                Console.WriteLine($"1");
 
                 // 3. Фильтруем
                 var sitesToBlock = FilterAndWhitelistSites(sitesReport, blacklistWords, whitelistWords);
+                Console.WriteLine($"2");
 
                 // 4. Обновляем кампанию
                 if (sitesToBlock.Count > 0)
                 {
+                    Console.WriteLine($"3");
                     var getBody = new
                     {
                         method = "get",
@@ -62,14 +65,15 @@ namespace YandexDirectWorker
                             FieldNames = new[] { "Id", "ExcludedSites" }
                         }
                     };
-
+                    Console.WriteLine($"4");
                     var response = await SendJsonRpc(httpClient, "campaigns", getBody, yandexToken);
                     CheckJsonRpcResponse(response, "GetAllCampaignsData");
 
                     var campaigns = response["result"]?["Campaigns"];
-
+                    Console.WriteLine($"5");
                     if (campaigns != null)
                     {
+                        Console.WriteLine($"Кампаний: {campaigns.Count()}");
                         foreach (var campaignData in campaigns)
                         {
                             await UpdateCampaignNegativeSites(httpClient, yandexToken, campaignData, sitesToBlock.ToList());
