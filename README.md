@@ -105,7 +105,7 @@
 
 ## Переменные окружения
 
-GOOGLE_API_KEY - 
+GOOGLE_API_KEY - будет в битриксе и Яндекс.Cloud
 
 либо если с ключем проблема:
 <br/><br/>
@@ -121,7 +121,7 @@ GOOGLE_API_KEY -
 Полученный ключ (длинная строка) вы будете использовать.
 <br/><br/>
 
-SHEET_ID - 1NVOJjYUr9u9MjnhQC45e5botVcb-m8bFcDJaPUxOan4, либо если нужна другая таблица - создаем, берем id между /d/ и /edit
+SHEET_ID - будет в битриксе и Яндекс.Cloud, либо если нужна другая таблица - создаем, берем id между /d/ и /edit
 
 SHEET_RANGE_BLACKLIST - Лист1!A2:A
 
