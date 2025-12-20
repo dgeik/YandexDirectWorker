@@ -65,12 +65,11 @@ namespace YandexDirectWorker
                             FieldNames = new[] { "Id", "ExcludedSites" }
                         }
                     };
-                    Console.WriteLine($"4");
                     var response = await SendJsonRpc(httpClient, "campaigns", getBody, yandexToken);
                     CheckJsonRpcResponse(response, "GetAllCampaignsData");
 
                     var campaigns = response["result"]?["Campaigns"];
-                    Console.WriteLine($"5");
+
                     if (campaigns != null)
                     {
                         Console.WriteLine($"Кампаний: {campaigns.Count()}");
@@ -165,10 +164,11 @@ namespace YandexDirectWorker
         // А. Получение отчета
         private async Task<List<string>> GetSitesFromReport(HttpClient client, string token)
         {
+            Console.WriteLine($"0");
             client.DefaultRequestHeaders.Clear();
             client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {token}");
             client.DefaultRequestHeaders.TryAddWithoutValidation("processingMode", "auto");
-
+            Console.WriteLine($"1");
             var reportDefinition = new
             {
                 params_ = new
@@ -183,22 +183,22 @@ namespace YandexDirectWorker
                     IncludeDiscount = "NO"
                 }
             };
-
+            Console.WriteLine($"2");
             string jsonBody = JsonConvert.SerializeObject(reportDefinition).Replace("params_", "params");
             var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync(YandexApiUrl + "reports", content);
-
+            Console.WriteLine($"3");
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 throw new Exception($"Yandex API Error Status: {response.StatusCode}. Content: {errorContent}");
             }
-
+            Console.WriteLine($"4");
             var reportText = await response.Content.ReadAsStringAsync();
             var sites = new List<string>();
             var lines = reportText.Split('\n');
-
+            Console.WriteLine($"5");
             foreach (var line in lines.Skip(1))
             {
                 if (string.IsNullOrWhiteSpace(line)) continue;
@@ -209,6 +209,7 @@ namespace YandexDirectWorker
                     if (!string.IsNullOrEmpty(site) && site != "--") sites.Add(site);
                 }
             }
+            Console.WriteLine($"6");
             return sites.Distinct().ToList();
         }
 
