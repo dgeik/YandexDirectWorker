@@ -61,7 +61,7 @@ namespace YandexDirectWorker
                     {
                         await UpdateCampaignNegativeSites(httpClient, yandexToken, activeCampaignId, sitesToBlock.ToList());
                     }
-                    return $"Успешно. Добавлено в блок: {sitesToBlock.Count} площадок.";
+                    Console.WriteLine($"Успешно. Добавлено в блок: {sitesToBlock.Count} площадок.");
                 }
                 catch (Exception ex)
                 {
@@ -127,7 +127,6 @@ namespace YandexDirectWorker
                     if (site.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         sitesToBlock.Add(site);
-                        Console.WriteLine($"[Blacklist]: Площадка '{site}'");
                         break;
                     }
                 }
@@ -237,23 +236,23 @@ namespace YandexDirectWorker
         // Б. Обновление кампании
         private async Task UpdateCampaignNegativeSites(HttpClient client, string token, long campId, List<string> newBlacklist)
         {
-            // 1. Get Current
             var getBody = new { method = "get", @params = new { SelectionCriteria = new { Ids = new[] { campId } }, FieldNames = new[] { "Id", "ExcludedSites" } } };
             var respGet = await SendJsonRpc(client, "campaigns", getBody, token);
+            
+            CheckJsonRpcResponse(respGet, "Campaigns.get");
 
-            var currentSites = respGet["result"]?["Campaigns"]?[0]?["ExcludedSites"]?["Items"]?.ToObject<List<string>>() ?? new List<string>();
+            var itemsToken = respGet.SelectToken("result.Campaigns[0].ExcludedSites.Items");
 
-            var normalizedCurrentSites = currentSites
-                .Select(s => CleanDomain(s)).ToList();
+            var currentSites = itemsToken != null && itemsToken.Type == JTokenType.Array
+                ? itemsToken.ToObject<List<string>>()
+                : new List<string>();
 
-            var normalizedNewBlacklist = newBlacklist
-                .Select(s => CleanDomain(s)).ToList();
+            var uniqueSites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            var uniqueSites = new HashSet<string>(normalizedCurrentSites);
-            foreach (var site in normalizedNewBlacklist)
-            {
-                uniqueSites.Add(site);
-            }
+            foreach (var s in currentSites) uniqueSites.Add(CleanDomain(s));
+
+            foreach (var s in newBlacklist) uniqueSites.Add(CleanDomain(s));
+
             var finalBlacklist = uniqueSites.ToList();
 
             if (finalBlacklist.Count > 1000)
@@ -261,7 +260,6 @@ namespace YandexDirectWorker
                 finalBlacklist = finalBlacklist.Take(1000).ToList();
             }
 
-            // 3. Update
             var updateBody = new { method = "update", @params = new { Campaigns = new[] { new { Id = campId, ExcludedSites = new { Items = finalBlacklist } } } } };
             await SendJsonRpc(client, "campaigns", updateBody, token);
         }
