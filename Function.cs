@@ -16,7 +16,7 @@ namespace YandexDirectWorker
     {
         private const string YandexApiUrl = "https://api.direct.yandex.com/json/v5/";
 
-        // Точка входа для Яндекс.Облака
+        // Точка входа для Яндекс.Cloud
         public async Task<string> FunctionHandler(string input)
         {
             using var httpClient = new HttpClient();
@@ -29,50 +29,85 @@ namespace YandexDirectWorker
             string sheetRangeWhitelist = Environment.GetEnvironmentVariable("SHEET_RANGE_WHITELIST") ?? "Лист1!B2:B";
             string? googleApiKey = Environment.GetEnvironmentVariable("GOOGLE_API_KEY");
 
-            Console.WriteLine($"Обработка Кампания ID: {campaignId}");
-
-            if (string.IsNullOrEmpty(yandexToken) || string.IsNullOrEmpty(googleApiKey) || campaignId == 0)
+            if (string.IsNullOrEmpty(yandexToken) || string.IsNullOrEmpty(googleApiKey))
             {
                 return "Ошибка: Не заданы ключевые переменные окружения (Token, googleApi, или Campaign ID).";
             }
 
-            try
+            // 1. Получаем белый и черный списки
+            var combinedLists = await GetWordsFromGoogle(sheetId, [sheetRangeBlacklist, sheetRangeWhitelist], googleApiKey!);
+
+            var blacklistWords = combinedLists[0];
+            var whitelistWords = combinedLists[1];
+
+            Console.WriteLine($"Найдено Черный список: {blacklistWords.Count}");
+            Console.WriteLine($"Найдено Белый список: {whitelistWords.Count}");
+
+            // 1,2. Получаем активные кампании
+            List<long> allCampaignIds = await GetAllActiveCampaignIds(httpClient, yandexToken);
+
+            foreach (var activeCampaignId in allCampaignIds)
             {
-                // 1. Получаем белый и черный списки
-                var combinedLists = await GetWordsFromGoogle(sheetId, [sheetRangeBlacklist, sheetRangeWhitelist], googleApiKey!);
-
-                var stopWords = combinedLists[0];
-                var whitelistWords = combinedLists[1];
-
-                Console.WriteLine($"Найдено Черный список: {stopWords.Count}");
-                Console.WriteLine($"Найдено Белый список: {whitelistWords.Count}");
-
-                // 2. Получаем отчет
-                var sitesReport = await GetSitesFromReport(httpClient, yandexToken, campaignId);
-                Console.WriteLine($"Площадок в отчете: {sitesReport.Count}");
-
-                // 3. Фильтруем
-                var sitesToBlock = FilterAndWhitelistSites(sitesReport, stopWords, whitelistWords);
-                Console.WriteLine($"Кандидатов на блок: {sitesToBlock.Count}");
-
-                // 4. Обновляем кампанию
-                if (sitesToBlock.Count > 0)
+                try
                 {
-                    await UpdateCampaignNegativeSites(httpClient, yandexToken, campaignId, sitesToBlock.ToList());
+                    // 2. Получаем отчет
+                    var sitesReport = await GetSitesFromReport(httpClient, yandexToken, activeCampaignId);
+
+                    // 3. Фильтруем
+                    var sitesToBlock = FilterAndWhitelistSites(sitesReport, blacklistWords, whitelistWords);
+
+                    // 4. Обновляем кампанию
+                    if (sitesToBlock.Count > 0)
+                    {
+                        await UpdateCampaignNegativeSites(httpClient, yandexToken, activeCampaignId, sitesToBlock.ToList());
+                    }
+                    return $"Успешно. Добавлено в блок: {sitesToBlock.Count} площадок.";
                 }
-                return $"Успешно. Добавлено в блок: {sitesToBlock.Count} площадок.";
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"CRITICAL ERROR: {ex.Message}");
+                    Console.WriteLine(ex.StackTrace);
+                }
             }
-            catch (Exception ex)
+            return $"Обработка завершена.";
+        }
+
+        private async Task<List<long>> GetAllActiveCampaignIds(HttpClient client, string token)
+        {
+            var getBody = new
             {
-                Console.WriteLine($"CRITICAL ERROR: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-                throw;
+                method = "get",
+                @params = new
+                {
+                    SelectionCriteria = new { },
+                    FieldNames = new[] { "Id", "StatusArchived" }
+                }
+            };
+
+            var response = await SendJsonRpc(client, "campaigns", getBody, token);
+            CheckJsonRpcResponse(response, "GetAllCampaignIds");
+
+            var campaigns = response["result"]?["Campaigns"];
+            var activeIds = new List<long>();
+
+            if (campaigns != null)
+            {
+                foreach (var campaign in campaigns)
+                {
+                    if (campaign["StatusArchived"]?.ToString() == "NO")
+                    {
+                        activeIds.Add(campaign["Id"].Value<long>());
+                    }
+                }
             }
+
+            Console.WriteLine($"Активных кампаний: {activeIds.Count}");
+            return activeIds;
         }
 
         // --- ЛОГИКА ФИЛЬТРАЦИИ ---
 
-        private HashSet<string> FilterAndWhitelistSites(List<string> sitesReport, List<string> stopWords, List<string> whitelistWords)
+        private HashSet<string> FilterAndWhitelistSites(List<string> sitesReport, List<string> blacklistWords, List<string> whitelistWords)
         {
             var whitelistSet = new HashSet<string>(whitelistWords, StringComparer.OrdinalIgnoreCase);
             var sitesToBlock = new HashSet<string>();
@@ -87,7 +122,7 @@ namespace YandexDirectWorker
                 }
 
                 //ЧЕРНЫЙ СПИСОК
-                foreach (var word in stopWords)
+                foreach (var word in blacklistWords)
                 {
                     if (site.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
@@ -230,7 +265,7 @@ namespace YandexDirectWorker
             var updateBody = new { method = "update", @params = new { Campaigns = new[] { new { Id = campId, ExcludedSites = new { Items = finalBlacklist } } } } };
             await SendJsonRpc(client, "campaigns", updateBody, token);
         }
-        //1
+
         // Хелпер для отправки JSON-RPC запросов
         private async Task<JObject> SendJsonRpc(HttpClient client, string serviceName, object body, string token)
         {
