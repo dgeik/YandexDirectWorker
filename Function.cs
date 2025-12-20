@@ -44,9 +44,23 @@ namespace YandexDirectWorker
 
             try
             {
+                var getBody = new
+                {
+                    method = "get",
+                    @params = new
+                    {
+                        SelectionCriteria = new { States = new[] { "ON" } },
+                        FieldNames = new[] { "Id", "ExcludedSites" }
+                    }
+                };
+                var response = await SendJsonRpc(httpClient, "campaigns", getBody, yandexToken);
+                var campaigns = response["result"]?["Campaigns"];
+
+                List<string> allCampaignIds = campaigns.Select(c => c["Id"].ToString()).ToList();
+
                 // 2. Получаем отчет
-                var sitesReport = await GetSitesFromReport(httpClient, yandexToken);
-                Console.WriteLine($"1");
+                var sitesReport = await GetSitesFromReport(httpClient, yandexToken, allCampaignIds);
+                Console.WriteLine($"1 кампаний: {sitesReport.Count}");
 
                 // 3. Фильтруем
                 var sitesToBlock = FilterAndWhitelistSites(sitesReport, blacklistWords, whitelistWords);
@@ -55,24 +69,8 @@ namespace YandexDirectWorker
                 // 4. Обновляем кампанию
                 if (sitesToBlock.Count > 0)
                 {
-                    Console.WriteLine($"3");
-                    var getBody = new
-                    {
-                        method = "get",
-                        @params = new
-                        {
-                            SelectionCriteria = new { States = new[] { "ON" } },
-                            FieldNames = new[] { "Id", "ExcludedSites" }
-                        }
-                    };
-                    var response = await SendJsonRpc(httpClient, "campaigns", getBody, yandexToken);
-                    CheckJsonRpcResponse(response, "GetAllCampaignsData");
-
-                    var campaigns = response["result"]?["Campaigns"];
-
                     if (campaigns != null)
                     {
-                        Console.WriteLine($"Кампаний: {campaigns.Count()}");
                         foreach (var campaignData in campaigns)
                         {
                             await UpdateCampaignNegativeSites(httpClient, yandexToken, campaignData, sitesToBlock.ToList());
@@ -162,7 +160,7 @@ namespace YandexDirectWorker
         // --- МЕТОДЫ YANDEX ---
 
         // А. Получение отчета
-        private async Task<List<string>> GetSitesFromReport(HttpClient client, string token)
+        private async Task<List<string>> GetSitesFromReport(HttpClient client, string token, List<string> campaignIds)
         {
             Console.WriteLine($"0");
             client.DefaultRequestHeaders.Clear();
@@ -173,11 +171,17 @@ namespace YandexDirectWorker
             {
                 params_ = new
                 {
-                    SelectionCriteria = new {},
+                    SelectionCriteria = new
+                    {
+                        Filter = new[]
+                            {
+                                new { Field = "CampaignId", Operator = "IN", Values = campaignIds.ToArray() }
+                            }
+                    },
                     FieldNames = new[] { "Placement", "Impressions" },
                     ReportName = $"CloudCheck_{DateTime.UtcNow.Ticks}",
                     ReportType = "CUSTOM_REPORT",
-                    DateRangeType = "AUTO",
+                    DateRangeType = "LAST_7_DAYS",
                     Format = "TSV",
                     IncludeVAT = "NO",
                     IncludeDiscount = "NO"
