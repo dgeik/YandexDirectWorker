@@ -43,7 +43,7 @@ namespace YandexDirectWorker
             Console.WriteLine($"Найдено Черный список: {blacklistWords.Count}");
             Console.WriteLine($"Найдено Белый список: {whitelistWords.Count}");
 
-            // 1,2. Получаем активные кампании
+            // 1.2. Получаем активные кампании
             List<long> allCampaignIds = await GetAllActiveCampaignIds(httpClient, yandexToken);
 
             foreach (var activeCampaignId in allCampaignIds)
@@ -79,8 +79,11 @@ namespace YandexDirectWorker
                 method = "get",
                 @params = new
                 {
-                    SelectionCriteria = new { },
-                    FieldNames = new[] { "Id", "StatusArchived" }
+                    SelectionCriteria = new
+                    {
+                        States = new[] { "ON" }
+                    },
+                    FieldNames = new[] { "Id" }
                 }
             };
 
@@ -94,10 +97,7 @@ namespace YandexDirectWorker
             {
                 foreach (var campaign in campaigns)
                 {
-                    if (campaign["StatusArchived"]?.ToString() == "NO")
-                    {
-                        activeIds.Add(campaign["Id"].Value<long>());
-                    }
+                    activeIds.Add(campaign["Id"].Value<long>());
                 }
             }
 
