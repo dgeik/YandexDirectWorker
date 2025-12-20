@@ -23,7 +23,6 @@ namespace YandexDirectWorker
             Console.WriteLine("--- Запуск функции очистки площадок ---");
 
             string yandexToken = Environment.GetEnvironmentVariable("YANDEX_TOKEN") ?? "";
-            long campaignId = long.Parse(Environment.GetEnvironmentVariable("CAMPAIGN_ID") ?? "0");
             string sheetId = Environment.GetEnvironmentVariable("SHEET_ID") !;
             string sheetRangeBlacklist = Environment.GetEnvironmentVariable("SHEET_RANGE_BLACKLIST") ?? "Лист1!A2:A";
             string sheetRangeWhitelist = Environment.GetEnvironmentVariable("SHEET_RANGE_WHITELIST") ?? "Лист1!B2:B";
@@ -248,9 +247,7 @@ namespace YandexDirectWorker
                 : new List<string>();
 
             var uniqueSites = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
             foreach (var s in currentSites) uniqueSites.Add(CleanDomain(s));
-
             foreach (var s in newBlacklist) uniqueSites.Add(CleanDomain(s));
 
             var finalBlacklist = uniqueSites.ToList();
@@ -258,6 +255,15 @@ namespace YandexDirectWorker
             if (finalBlacklist.Count > 1000)
             {
                 finalBlacklist = finalBlacklist.Take(1000).ToList();
+            }
+
+            bool listsAreEqual = currentSites.Count == finalBlacklist.Count &&
+                    !finalBlacklist.Except(currentSites, StringComparer.OrdinalIgnoreCase).Any();
+
+            if (listsAreEqual)
+            {
+                Console.WriteLine($"Изменений в кампании {campId} нет");
+                return;
             }
 
             var updateBody = new { method = "update", @params = new { Campaigns = new[] { new { Id = campId, ExcludedSites = new { Items = finalBlacklist } } } } };
