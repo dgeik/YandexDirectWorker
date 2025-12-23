@@ -83,13 +83,13 @@
 # Яндекс.Cloud
 переходим сюда - https://console.yandex.cloud
 
-слева-снизу выбираем аккаунт - mail@road-map.onlineи, на нём - organization-mail@road-map.online<br/><br/>
+слева-снизу выбираем аккаунт - mail@road-map.online и, на нём - organization-mail@road-map.online<br/><br/>
 
 ## Cloud functions
 
 вписываем в поиск cloud functions, выбираем
 
-справва-сверху добавить
+справа-сверху добавить
 
 вписываем имя функции
 
