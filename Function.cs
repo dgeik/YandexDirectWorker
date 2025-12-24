@@ -16,7 +16,7 @@ namespace YandexDirectWorker
     {
         private const string YandexApiUrl = "https://api.direct.yandex.com/json/v5/";
 
-        // Точка входа для Яндекс.Облака
+        // Точка входа для Яндекс.Cloud
         public async Task<string> FunctionHandler(string input)
         {
             using var httpClient = new HttpClient();
