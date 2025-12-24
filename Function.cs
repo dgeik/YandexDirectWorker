@@ -53,7 +53,6 @@ namespace YandexDirectWorker
 
                 // 3. Фильтруем
                 var sitesToBlock = FilterAndWhitelistSites(sitesReport, stopWords, whitelistWords);
-                Console.WriteLine($"Кандидатов на блок: {sitesToBlock.Count}");
 
                 // 4. Обновляем кампанию
                 if (sitesToBlock.Count > 0)
@@ -92,7 +91,6 @@ namespace YandexDirectWorker
                     if (site.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
                     {
                         sitesToBlock.Add(site);
-                        Console.WriteLine($"[Blacklist]: Площадка '{site}'");
                         break;
                     }
                 }
