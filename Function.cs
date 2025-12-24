@@ -22,6 +22,7 @@ namespace YandexDirectWorker
             using var httpClient = new HttpClient();
             Console.WriteLine("--- Запуск функции очистки площадок ---");
 
+
             string yandexToken = Environment.GetEnvironmentVariable("YANDEX_TOKEN") ?? "";
             string sheetId = Environment.GetEnvironmentVariable("SHEET_ID") !;
             string sheetRangeBlacklist = Environment.GetEnvironmentVariable("SHEET_RANGE_BLACKLIST") ?? "Лист1!A2:A";
