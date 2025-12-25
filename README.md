@@ -99,7 +99,7 @@
 
 Точка входа - YandexDirectWorker.Handler
 
-Таймаут - 10 секунд
+Таймаут - 3 минуты
 
 Сервисный аккаунт - ban-show-api-tool-2<br/><br/>
 
@@ -127,7 +127,9 @@ SHEET_RANGE_BLACKLIST - Лист1!A2:A
 
 SHEET_RANGE_WHITELIST - Лист1!B2:B
 
-YANDEX_TOKEN - полученный постоянный токен<br/><br/>
+YANDEX_TOKEN - полученный постоянный токен
+
+CAMPAIGN_ID - будет в битриксе и Яндекс.Cloud<br/><br/>
 
 ## Триггер
 
